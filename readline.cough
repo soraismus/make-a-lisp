@@ -1,0 +1,47 @@
+blank?         = require './blank'
+default-prompt = require './default_prompt'
+ffi            = require 'ffi'
+fs             = require 'fs'
+path           = require 'path'
+
+history-file-name = '.mal-history'
+history-file      = path.join (process.env.HOME, history-file-name)
+history-loaded?   = false
+max-history-size  = 2000
+
+line-editor-name = 'libreadline' # Alternatively, 'libedit'
+
+line-editor-config =
+  readline    : ['string', ['string']]
+  add_history : ['int', ['string']] 
+
+line-editor = ffi.Library (line-editor-name, line-editor-config)
+
+add-to-history = \line ->
+  unless blank? line
+    line-editor.add_history line
+    try fs.appendFileSync (history-file, line + '\n')
+
+cull = \lines ->
+  first-line = Math.max (lines.length - max-history-size, 0)
+  lines[first-line..]
+
+get-lines = ->
+  if fs.existsSync history-file
+    fs.readFileSync history-file
+      .toString ()
+      .split '\n'
+  else
+    []
+
+readline = (prompt = default-prompt) ->
+  unless history-loaded?
+    history-loaded? = true
+    lines = cull (get-lines ())
+    (line-editor.add_history line) for line in lines
+
+  line = line-editor.readline prompt
+  add-to-history line
+  line
+
+module.exports = readline
