@@ -1,33 +1,29 @@
 'use strict'
 
-associateKeysAndValues = \array ->
+associateKeysAndValues = \jsArray ->
   result = {}
-  for i in [0 ... array.length] by 2
-    # `array[i]` must be either a MAL string or MAL number.
-    result[array[i].value] = array[i + 1]
+  for i in [0 ... jsArray.length] by 2
+    # `jsArray[i]` must be either a MAL string or MAL number.
+    result[jsArray[i].value] = jsArray[i + 1]
   result
 
-convertToMalType = \val ->
-  getTypeConstructor!! val val
+call = (malFn, malValues...) ->
+  malFn.bind \jsFn ->
+    jsFn ((extractJsValues malValues)...)
 
-createConstantFunction = \constant \_ ->
-  constant
+convertMalBoolean = \jsValue ->
+  if jsValue then TRUE else FALSE
 
-createFactory = \type \value ->
-  createMalType (value, type)
+createFactory = \malType \jsValue ->
+  createMalValue (jsValue, malType)
 
 createMalHash = \jsArray ->
   _createMalHash (associateKeysAndValues jsArray)
 
-createMalType = (value, type) ->
-  map = \fn ->
-    _value = fn (value, type)
-    [_value, _type] = _value if jsArray? _value
-    createMalType (_value, _type ?? type)
-  { map, type, value }
-
-createPredicateFor = \constant \value ->
-  value == constant
+createMalValue = (jsValue, malType) ->
+  bind = \fn ->
+    fn (jstValue, malType)
+  { bind, type: malType, value: jsValue }
 
 createTypeUtilities = \type ->
   factory = createFactory type
@@ -35,113 +31,82 @@ createTypeUtilities = \type ->
     object.type == type
   [factory, predicate]
 
-getFALSE = () -> FALSE
-getNIL   = () -> NIL
-getTRUE  = () -> TRUE
-
-getType = \object ->
-  object.type
-
-# '!!' indicates that an error variant is returned.
-getTypeConstructor!! = \val ->
-  switch
-    when malValue? val   then identity
-    when jsNumber? val   then createMalNumber
-    when jsString? val   then createMalString
-    when jsFunction? val then createMalFunction
-    when jsArray? val    then createMalList
-    when jsObject? val   then createMalHash
-    when jsFalse? val    then getFALSE
-    when jsNull? val     then getNIL
-    when jsTrue? val     then getTRUE
-    else
-      throwMalConversionError ()
-
-getValues = \args ->
-  args.map \arg -> arg.value
+extractJsValues = (malValues...) ->
+  malValues.map \malValue -> malValue.value
 
 identity = \obj ->
   obj
 
-jsFalse? = \value ->
-  value == false
+jsArray? = \value ->
+  Array.isArray value
 
-jsNull? = \value ->
-  value == null
+malSeq? = \value ->
+  malList? value || malVector? value
 
-jsTrue? = \value ->
-  value == true
-
-liftFunction = (_fn) ->
-  fn ((args...) -> wrap (_fn ((getValues args)...)))
-
-mal-seq? = \value ->
-  mal-list? value || malVector? value
-
-malValue? = \object ->
-  !! object.type
-
-ofJavascriptType? = \type \value ->
-  typeof value == type
+MAL-TYPES = [
+  MAL-ATOM-TYPE     = 'atom'
+  MAL-HASH-TYPE     = 'hash'
+  MAL-FALSE-TYPE    = 'false'
+  MAL-FUNCTION-TYPE = 'function'
+  MAL-KEYWORD-TYPE  = 'keyword'
+  MAL-LIST-TYPE     = 'list'
+  MAL-MACRO-TYPE    = 'macro'
+  MAL-NIL-TYPE      = 'nil'
+  MAL-NUMBER-TYPE   = 'number'
+  MAL-STRING-TYPE   = 'string'
+  MAL-SYMBOL-TYPE   = 'symbol'
+  MAL-TRUE-TYPE     = 'true'
+  MAL-VECTOR-TYPE   = 'vector'
+]
 
 [
   [createMalAtom,     malAtom?    ]
-  [_createMalHash,    mal-hash?    ]
+  [_createMalHash,    malHash?    ]
+  [createMalFalse,    malFalse?   ]
   [createMalFunction, malFunction?]
-  [createMal-keyword,  mal-keyword? ]
-  [createMalList,     mal-list?    ]
+  [createMalKeyword,  malKeyword? ]
+  [createMalList,     malList?    ]
   [createMalMacro,    malMacro?   ]
+  [createMalNil,      malNil?     ]
   [createMalNumber,   malNumber?  ]
-  [createMalString,   mal-string?  ]
-  [createMalSymbol,   mal-symbol?  ]
+  [createMalString,   malString?  ]
+  [createMalSymbol,   malSymbol?  ]
+  [createMalTrue,     malTrue?    ]
   [createMalVector,   malVector?  ]
-] = [
-  'atom'
-  'hash'
-  'fn'
-  'keyword'
-  'list'
-  'macro'
-  'number'
-  'string'
-  'symbol'
-  'vector'
-].map createTypeUtilities
-
-[createMalFalse, createMalNil, createMalTrue] =
-  ['false', 'nil', 'true'].map createFactory
+] = MAL-TYPES.map createTypeUtilities
 
 FALSE = createMalFalse false
 NIL   = createMalNil null
 TRUE  = createMalTrue true
 
-[malFalse?, malNil?, malTrue?] =
-  [FALSE, NIL, TRUE].map createPredicateFor
-
-[getFALSE, getNIL, getTRUE] =
-  [FALSE, NIL, TRUE].map createConstantFunction
-
-jsArray? = Array.isArray
-
-[jsFunction?, jsNumber?, jsObject?, jsString?] =
-  ['function', 'number', 'object', 'string'].map ofJavascriptType?
-
-# -------------------------------------------------------------------------
-
-MalConversionException = \message ->
-  this.message = message
-  if 'captureStackTrace' in Error
-    Error.captureStackTrace(this, MalConversionException)
-  else
-    this.stack = (new Error()).stack
-
-MalConversionException.prototype = Object.create(Error.prototype)
-MalConversionException.prototype.name = 'MalConversionException'
-MalConversionException.prototype.constructor = MalConversionException
-
-throwMalConversionError = ->
-  throw new MalConversionException()
-
-# -------------------------------------------------------------------------
-
-module.exports = {}
+module.exports = {
+  call
+  convertMalBoolean
+  createMalAtom
+  createMalHash
+  createMalFunction
+  createMalKeyword
+  createMalList
+  createMalMacro
+  createMalNumber
+  createMalString
+  createMalSymbol
+  createMalVector
+  FALSE
+  malAtom?
+  malHash?
+  malFalse?
+  malFunction?
+  malKeyword?
+  malList?
+  malMacro?
+  malNil?
+  malNumber?
+  malSeq?
+  malString?
+  malSymbol?
+  malTrue?
+  malVector?
+  NIL
+  TRUE
+}
