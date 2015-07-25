@@ -1,0 +1,18 @@
+{ createMalSymbol } = require './types'
+
+[DEREF, QUASIQUOTE, QUOTE, SPLICE-UNQUOTE, UNQUOTE] =
+  [
+    'deref'
+    'quasiquote'
+    'quote'
+    'splice-unquote'
+    'unquote'
+  ].map createMalSymbol
+
+module.exports = {
+  DEREF
+  QUASIQUOTE
+  QUOTE
+  SPLICE-UNQUOTE
+  UNQUOTE
+}
