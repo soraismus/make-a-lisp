@@ -1,5 +1,7 @@
 'use strict'
 
+jsArray? = require './isJsArray'
+
 associateKeysAndValues = \jsArray ->
   result = {}
   for i in [0 ... jsArray.length] by 2
@@ -36,9 +38,6 @@ extractJsValues = (malValues...) ->
 
 identity = \obj ->
   obj
-
-jsArray? = \value ->
-  Array.isArray value
 
 malSeq? = \value ->
   malList? value || malVector? value
