@@ -1,4 +1,4 @@
-blank?         = require './blank'
+blank?         = require './isBlank'
 default-prompt = require './default_prompt'
 readline       = require './readline'
 
