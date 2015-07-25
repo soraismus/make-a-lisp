@@ -1,0 +1,134 @@
+###
+list-start      = '('
+list-end        = ')'
+vector-start    = '['
+vector-end      = ']'
+hashmap-start   = '{'
+hashmap-end     = '}'
+comment         = ';'
+deref           = '@'
+quote           = '\'' 
+quasiquote      = '`'
+unquote         = '~'
+splice-unquote  = '~@'
+metadata-marker = '^'
+###
+
+[deref, quasiquote, quote, splice-unquote, unquote] =
+  ['deref', 'quasiquote', 'quote', 'splice-unquote', 'unquote'].map symbol
+
+start-tokens = [list-start, vector-start, hashmap-start]
+end-tokens   = [list-end, vector-end, hashmap-end]
+meta-tokens  = [deref, quote, quasiquote, unquote, splice-unquote]
+
+meta-symbols =
+  '@'  : deref
+  '`'  : quasiquote
+  '\'' : quote
+  '~@' : splice-unquote
+  '~'  : unquote
+
+seq-types =
+  ')' : list
+  ']' : vector
+  '}' : hash
+
+absent? = \tokens ->
+  tokens.length == 0
+
+array? = Array.isArray
+
+# WET; cf. `meta-reducible?`
+array-reducible? = \stack ->
+  reducible? stack && penultimate-is-array? stack
+
+blank? = require './blank'
+
+end? = \token ->
+  token in end-tokens
+
+# no-op
+ignore! = (stack, token) ->
+
+meaningful? = \str ->
+  ! blank? str
+
+meta? = \token ->
+  token in meta-tokens
+
+metadata-marker? = \token ->
+  token == metadata-marker
+
+# WET; cf. `array-reducible?`
+meta-reducible? = \stack ->
+  reducible? stack && penultimate-is-meta? stack
+
+reducible? = \stack ->
+  stack.length > 1
+
+parse = \tokens ->
+  throw new BlankException if absent? tokens
+  stack = []
+  for token in tokens
+    manage! = switch
+      when start? token           then shift-start-token!
+      when end? token             then reduce-end-token!
+      when meta? token            then shift-meta-token!
+      when metadata-marker? token then ignore!
+      else                             shift-atom!
+    manage! (stack, token)
+  stack.pop ()
+
+# WET; cf. `penultimate-is-array?`
+penultimate-is-array? = penultimate array?
+  array? stack[stack.length - 2]
+
+# WET; cf. `penultimate-is-meta?`
+penultimate-is-meta? = penultimate meta?
+  meta? stack[stack.length - 2]
+
+read = \str ->
+  throw new Exception() if blank? str
+  parse (tokenize str)
+
+reduce-end-token! = (stack, end-token) ->
+  javascript-array = stack.pop ()
+  shift! (stack, (seq-types[end-token] javascript-array))
+
+reduce-meta-tokens! = \stack ->
+  while meta-reducible? stack
+    value = stack.pop ()
+    meta-symbol = stack.pop ()
+    stack.push (list [meta-symbol, value])
+  if array-reducible? stack
+    value = stack.pop ()
+    array = stack[stack.length - 1]
+    array.push value
+
+shift! = (stack, value) ->
+  last-value = stack[stack.length - 1] 
+  if array? last-value
+    last-value.push value
+  else
+    stack.push value
+    reduce-meta-tokens! stack
+
+shift-atom! = (stack, token) ->
+  shift! (stack, (atomize token))
+
+shift-meta-token! = (stack, token) ->
+  stack.push 
+
+shift-start-token! = (stack, token) ->
+
+start? = \token ->
+  token in start-tokens
+
+tokenize = \str ->
+  token-regex =
+    /[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)/g
+  tokens = []
+  while meaningful? (match = token-regex.exec(str)[1])
+    continue if comment? match[0]
+    tokens.push match
+  tokens

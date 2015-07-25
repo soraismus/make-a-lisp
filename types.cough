@@ -1,0 +1,140 @@
+'use strict'
+
+js-array? = Array.isArray
+
+of-javascript-type = \type \value ->
+  typeof value == type
+
+[js-function?, js-number?, js-object?, js-string?] =
+  ['function', 'number', 'object', 'string'].map of-javascript-type
+
+number? = of-javascript-type 'number'
+number? = of-javascript-type 'number'
+
+associate-keys-and-values = \array ->
+  result = {}
+  for i in [0 ... array.length] by 2
+    result[array[i].value] = array[i + 1]
+  result
+
+_create-factory = (value, type) ->
+  bind = \fn ->
+    [_value, _type] = fn (value, type)
+    _create-factory (_value, _type ?? type)
+  { bind, type, value }
+
+create-factory = \type \value ->
+  _create-factory (value, type)
+
+create-type-utilities = \type ->
+  factory = create-factory type
+  predicate = \object ->
+    object.type == type
+  [factory, predicate]
+
+get-type = \object ->
+  object.type
+
+get-values = \args ->
+  args.map \arg -> arg.value
+
+identity = \obj ->
+  obj
+
+lift-fn = (_fn) ->
+  fn ((args...) -> wrap (_fn ((get-values args)...)))
+
+mal-value? = \object ->
+  !! object.type
+
+number? = \value ->
+  typeof value == 'm
+
+# TODO: Refactor.
+wrap = \val ->
+  enwrap = switch
+    when mal-value? val   then identity
+    when js-number? val   then number
+    when js-string? val   then string
+    when js-function? val then function
+    when js-array? val    then list
+    when js-object? val   then hash
+  if enwrap
+    enwrap val
+  else
+    switch val
+      when true  then TRUE
+      when false then FALSE
+      when null  then NIL
+
+[
+  [atom,     atom?    ]
+  [_hash,    hash?    ]
+  [fn,       fn?      ]
+  [keyword,  keyword? ]
+  [list,     list?    ]
+  [macro,    macro?   ]
+  [number,   number?  ]
+  [string,   string?  ]
+  [symbol,   symbol?  ]
+  [vector,   vector?  ]
+] = [
+  'atom'
+  'hash'
+  'fn'
+  'keyword'
+  'list'
+  'macro'
+  'number'
+  'string'
+  'symbol'
+  'vector'
+].map create-type-utilities
+
+[_false, _nil, _true] = ['false', 'nil', 'true'].map create-factory
+
+FALSE = _false false
+false? = \value -> value == FALSE
+
+NIL = _nil null
+nil? = \value -> value == NIL
+
+TRUE  = _true true
+true? = \value -> value == TRUE
+
+hash = \array ->
+  _hash (associate-keys-and-values array)
+
+seq? = \value ->
+  list? value || vector? value
+
+module.exports = {
+  atom
+  atom?
+  FALSE
+  false?
+  fn
+  fn?
+  get-type
+  hash
+  hash?
+  keyword
+  keyword?
+  lift-fn
+  list
+  list?
+  NIL
+  nil?
+  number
+  number?
+  seq?
+  string
+  string?
+  symbol
+  symbol?
+  TRUE
+  true?
+  vector
+  vector?
+  wrap
+}
