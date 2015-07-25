@@ -1,134 +1,142 @@
-###
-list-start      = '('
-list-end        = ')'
-vector-start    = '['
-vector-end      = ']'
-hashmap-start   = '{'
-hashmap-end     = '}'
-comment         = ';'
-deref           = '@'
-quote           = '\'' 
-quasiquote      = '`'
-unquote         = '~'
-splice-unquote  = '~@'
-metadata-marker = '^'
-###
+'use strict'
 
-[deref, quasiquote, quote, splice-unquote, unquote] =
-  ['deref', 'quasiquote', 'quote', 'splice-unquote', 'unquote'].map symbol
+blank?   = require './isBlank'
+jsArray? = require './isJsArray'
 
-start-tokens = [list-start, vector-start, hashmap-start]
-end-tokens   = [list-end, vector-end, hashmap-end]
-meta-tokens  = [deref, quote, quasiquote, unquote, splice-unquote]
+{ createMalHash, createMalList, createMalVector } = require './types'
 
-meta-symbols =
-  '@'  : deref
-  '`'  : quasiquote
-  '\'' : quote
-  '~@' : splice-unquote
-  '~'  : unquote
+{ DEREF, QUASIQUOTE, QUOTE, SPLICE-UNQUOTE, UNQUOTE } =
+  require './metaSymbols'
 
-seq-types =
-  ')' : list
-  ']' : vector
-  '}' : hash
+absent? = \tokenArray ->
+  tokenArray.length == 0
 
-absent? = \tokens ->
-  tokens.length == 0
+# WET; cf. `metaReducible?`
+arrayReducible? = \stack ->
+  reducible? stack && penultimateIsArray? stack
 
-array? = Array.isArray
+available? = \str ->
+  ! blank? str
 
-# WET; cf. `meta-reducible?`
-array-reducible? = \stack ->
-  reducible? stack && penultimate-is-array? stack
-
-blank? = require './blank'
+comment? = \token ->
+  token[0] == commentStart
 
 end? = \token ->
-  token in end-tokens
+  token in endTokens
+
+getTokenManager = \token ->
+  switch
+    when start? token           then shiftStartToken!
+    when end? token             then reduceEndToken!
+    when meta? token            then shiftMetaToken!
+    when metadataMarker? token  then ignore!
+    else                             shiftAtom!
 
 # no-op
 ignore! = (stack, token) ->
 
-meaningful? = \str ->
-  ! blank? str
-
 meta? = \token ->
-  token in meta-tokens
+  token in metaTokens
 
-metadata-marker? = \token ->
-  token == metadata-marker
+metadataMarker? = \token ->
+  token == metadataMarker
 
-# WET; cf. `array-reducible?`
-meta-reducible? = \stack ->
-  reducible? stack && penultimate-is-meta? stack
+# WET; cf. `arrayReducible?`
+metaReducible? = \stack ->
+  reducible? stack && penultimateIsMeta? stack
 
 reducible? = \stack ->
   stack.length > 1
 
 parse = \tokens ->
-  throw new BlankException if absent? tokens
   stack = []
   for token in tokens
-    manage! = switch
-      when start? token           then shift-start-token!
-      when end? token             then reduce-end-token!
-      when meta? token            then shift-meta-token!
-      when metadata-marker? token then ignore!
-      else                             shift-atom!
+    manage! = getTokenManager token
     manage! (stack, token)
   stack.pop ()
 
-# WET; cf. `penultimate-is-array?`
-penultimate-is-array? = penultimate array?
-  array? stack[stack.length - 2]
+# WET; cf. `penultimateIsArray?`
+penultimateIsArray? = penultimate array?
+  jsArray? stack[stack.length - 2]
 
-# WET; cf. `penultimate-is-meta?`
-penultimate-is-meta? = penultimate meta?
+# WET; cf. `penultimateIsMeta?`
+penultimateIsMeta? = penultimate meta?
   meta? stack[stack.length - 2]
 
 read = \str ->
-  throw new Exception() if blank? str
   parse (tokenize str)
 
-reduce-end-token! = (stack, end-token) ->
-  javascript-array = stack.pop ()
-  shift! (stack, (seq-types[end-token] javascript-array))
+reduceEndToken! = (stack, endToken) ->
+  jsArray = stack.pop ()
+  shift! (stack, (seqTypeConstructors[endToken] jsArray))
 
-reduce-meta-tokens! = \stack ->
-  while meta-reducible? stack
+reduceMetaTokens! = \stack ->
+  while metaReducible? stack
     value = stack.pop ()
-    meta-symbol = stack.pop ()
-    stack.push (list [meta-symbol, value])
-  if array-reducible? stack
+    metaSymbol = stack.pop ()
+    stack.push (list [metaSymbol, value])
+  if arrayReducible? stack
     value = stack.pop ()
     array = stack[stack.length - 1]
     array.push value
 
 shift! = (stack, value) ->
-  last-value = stack[stack.length - 1] 
-  if array? last-value
-    last-value.push value
+  lastValue = stack[stack.length - 1] 
+  if jsArray? lastValue
+    lastValue.push value
   else
     stack.push value
-    reduce-meta-tokens! stack
+    reduceMetaTokens! stack
 
-shift-atom! = (stack, token) ->
+shiftAtom! = (stack, token) ->
   shift! (stack, (atomize token))
 
-shift-meta-token! = (stack, token) ->
+shiftMetaToken! = (stack, token) ->
   stack.push 
 
-shift-start-token! = (stack, token) ->
+shiftStartToken! = (stack, token) ->
+  stack.push []
 
 start? = \token ->
-  token in start-tokens
+  token in startTokens
 
 tokenize = \str ->
-  token-regex =
+  tokenRegex =
     /[\s,]*(~@|[\[\]{}()'`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"`,;)]*)/g
   tokens = []
-  while meaningful? (match = token-regex.exec(str)[1])
-    continue if comment? match[0]
-    tokens.push match
+  while available? (token = tokenRegex.exec(str)[1])
+    continue if comment? token
+    tokens.push token
   tokens
+
+listStart      = '('
+listEnd        = ')'
+vectorStart    = '['
+vectorEnd      = ']'
+hashmapStart   = '{'
+hashmapEnd     = '}'
+commentStart   = ';'
+deref          = '@'
+quote          = '\'' 
+quasiquote     = '`'
+unquote        = '~'
+spliceUnquote  = '~@'
+metadataMarker = '^'
+
+startTokens = [listStart, vectorStart, hashmapStart]
+endTokens   = [listEnd, vectorEnd, hashmapEnd]
+metaTokens  = [deref, quote, quasiquote, unquote, spliceUnquote]
+
+metaSymbols =
+  '@'  : DEREF
+  '`'  : QUASIQUOTE
+  '\'' : QUOTE
+  '~@' : SPLICE-UNQUOTE
+  '~'  : UNQUOTE
+
+seqTypeConstructors =
+  ')' : createMalList
+  ']' : createMalVector
+  '}' : createMalHash
+
+module.exports = read
