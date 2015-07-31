@@ -1,0 +1,29 @@
+createStream! = \array ->
+  () ->
+    value = array.shift () # Destructive operation.
+    if value == undefined then streamEnd else value
+
+EndRequest = \value ->
+  this.value = value
+  this
+
+forEach = \stream \fn ->
+  preValue = null
+  until streamEnd? (value = stream ())
+    _value = fn value
+    return _value.value if endRequest? _value
+    prevValue = _value
+  preValue
+
+endRequest? = \value ->
+  value instanceof EndRequest
+
+stopStreamingWith = \value ->
+  new EndRequest value
+
+streamEnd? = \value ->
+  value == streamEnd
+
+streamEnd = {}
+
+module.exports = { createStream!, forEach, streamEnd?, stopStreamingWith }
