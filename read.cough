@@ -4,24 +4,29 @@ blank?   = require './isBlank'
 jsArray? = require './isJsArray'
 
 {
+  createStream!
+  forEach
+  streamEnd?
+} = require './stream-utilities'
+
+{
+  createMalHash
   createMalKeyword
+  createMalList
   createMalNumber
   createMalString
   createMalSymbol
+  createMalVector
   FALSE
   NIL
   TRUE
 } = require './types'
 
 { DEREF, QUASIQUOTE, QUOTE, SPLICE-UNQUOTE, UNQUOTE } =
-  require './metaSymbols'
+  require './meta-symbols'
 
-absent? = \tokenArray ->
-  tokenArray.length == 0
-
-# WET; cf. `metaReducible?`
-arrayReducible? = \stack ->
-  reducible? stack && penultimateIsArray? stack
+allSeqsAreCompleted? = \cache ->
+  ! notAllSeqsAreCompleted? cache
 
 atomize = \token ->
   switch
@@ -37,20 +42,43 @@ atomize = \token ->
 falseToken? = \token ->
   token == 'false'
 
-nilToken? = \token ->
-  token == 'nil'
+floatToken? = \token ->
+  /^-?[0-9]+.[0-9]+$/.test token
 
-trueToken? = \token ->
-  token == 'true'
+getAndValidateNextToken! = \getNextToken ->
+  cache =
+    '(' : 0
+    '[' : 0
+    '{' : 0
+    ')' : 0
+    ']' : 0
+    '}' : 0
+
+  ->
+    token = getNextToken ()
+    increment (cache, token) unless streamEnd? token
+    unless startTokensHavePreceded? cache
+      throw 'Start tokens must precede end tokens'
+
+    # TODO:
+    #if !(start? token && allSeqsAreCompleted? cache)
+    #  throw 'Error message TBD'
+
+    if streamEnd? token && notAllSeqsAreCompleted? cache
+      throw 'All seqs must be terminated with an appropriate end token'
+    token
 
 getFloatValue = \value ->
   parseFloat (value, 10)
 
-floatToken? = \token ->
-  /^-?[0-9]+.[0-9]+$/.test token
+getSeqConstructor = \endToken ->
+  seqTypeConstructors[endToken] ??  \value -> throw 'Invalid end token'
 
 getIntegerValue = \token ->
   parseInt (token, 10)
+
+increment = (cache, token) ->
+  cache[token]++
 
 integerToken? = \token ->
   /^-?[0-9]+$/.test token
@@ -80,14 +108,6 @@ comment? = \token ->
 end? = \token ->
   token in endTokens
 
-getTokenManager = \token ->
-  switch
-    when start? token           then shiftStartToken!
-    when end? token             then reduceEndToken!
-    when meta? token            then shiftMetaToken!
-    when metadataMarker? token  then ignore!
-    else                             shiftAtom!
-
 # no-op
 ignore! = (stack, token) ->
 
@@ -97,124 +117,51 @@ meta? = \token ->
 metadataMarker? = \token ->
   token == metadataMarker
 
-# WET; cf. `arrayReducible?`
-metaReducible? = \stack ->
-  reducible? stack && penultimateIsMeta? stack
+nilToken? = \token ->
+  token == 'nil'
 
-reducible? = \stack ->
-  stack.length > 1
+notAllSeqsAreCompleted? = \cache ->
+  cache[listStart] != cache[listEnd] ||
+    cache[vectorStart] != cache[vectorEnd] ||
+    cache[hashmapStart] != cache[hashmapEnd]
 
-parse = \tokens ->
-  token = tokens[0]
-  if start? token
-    intermediateResult = []
-    for 
-  else if end? token
-  else 
+_parse = \stack \token ->
+  switch
+    when start? token
+      push stack []
+    when end? token
+      array = pop stack
+      push (peek stack) (getSeqConstructor token array)
+    else
+      push (peek stack) (atomize token)
 
-last = \array ->
-  array[array.length - 1]
+parse = \getNextToken ->
+  token = getNextToken ()
+  return token unless start? token
+  stack = [[]]
+  forEach getNextToken (_parse stack)
+  pop stack
+
+peek = \stack ->
+  stack[stack.length - 1] ?? stack
+
+pop = \stack ->
+  stack.pop ()
 
 push = \array \value ->
   array.push value
   array
 
-_p = (token, tokens, complex) ->
-  if start? token
-    correspondingEnd = getCorrespondingEnd token
-    until (_token = tokens.pop ()) == correspondingEnd
-      if start? _token
-        push (last (push complex [])) (_p (_token, tokens, complex))
-      else if end? _token
-        array = complex.pop ()
-        push (last complex) (getSeqConstructor _token array)
-      else
-        push (last complex) _token
-    array = complex.pop ()
-    getSeqConstructor _token array
-  else
-    token
-
-# To copy an array `xs`: `xs.slice 0`
-_parse2 = (token, remainingTokens) ->
-  switch
-    when start? token
-      correspondingEndToken = getCorrespondingEndToken token
-      container = []
-      until ((_token = remainingTokens.pop ()) == correspondingEndToken
-        [malValue, remainingTokens] = _parse2 (_token, remainingTokens.slice(0))
-        container.push (_parse2 (_token, remainingTokens.slice 0))
-    else
-      [(atomize token), remainingTokens.slice(0)]
-
-_parse = (token, remainingTokens) ->
-  switch
-    when start? token
-      createMalContainer = getMalContainerFactory token
-      correspondingEnd? = correspondingEndFor token
-      container = []
-      i = 0
-      while remainingTokens.length > 0
-        nextToken = remainingTokens[i]
-        i++
-        if correspondingEnd? nextToken
-          return getMalContainerFactory container
-        else  
-          container.push (atomize nextToken)
-      throw 'no corresponding end'
-    when end? token
-      null
-    when meta? token
-      null
-    when metadataMarker? token
-      null
-    else
-      atomize token
-
-# WET; cf. `penultimateIsArray?`
-penultimateIsArray? = penultimate array?
-  jsArray? stack[stack.length - 2]
-
-# WET; cf. `penultimateIsMeta?`
-penultimateIsMeta? = penultimate meta?
-  meta? stack[stack.length - 2]
-
 read = \str ->
-  parse (tokenize str)
-
-reduceEndToken! = (stack, endToken) ->
-  jsArray = stack.pop ()
-  shift! (stack, (seqTypeConstructors[endToken] jsArray))
-
-reduceMetaTokens! = \stack ->
-  while metaReducible? stack
-    value = stack.pop ()
-    metaSymbol = stack.pop ()
-    stack.push (list [metaSymbol, value])
-  if arrayReducible? stack
-    value = stack.pop ()
-    array = stack[stack.length - 1]
-    array.push value
-
-shift! = (stack, value) ->
-  lastValue = stack[stack.length - 1] 
-  if jsArray? lastValue
-    lastValue.push value
-  else
-    stack.push value
-    reduceMetaTokens! stack
-
-shiftAtom! = (stack, token) ->
-  shift! (stack, (atomize token))
-
-shiftMetaToken! = (stack, token) ->
-  stack.push 
-
-shiftStartToken! = (stack, token) ->
-  stack.push []
+  ; parse getAndValidateNextToken! createStream! tokenize ; str
 
 start? = \token ->
   token in startTokens
+
+startTokensHavePreceded? = \cache ->
+  cache[listStart] >= cache[listEnd] &&
+    cache[vectorStart] >= cache[vectorEnd] &&
+    cache[hashmapStart] >= cache[hashmapEnd]
 
 tokenize = \str ->
   tokenRegex =
@@ -224,6 +171,9 @@ tokenize = \str ->
     continue if comment? token
     tokens.push token
   tokens
+
+trueToken? = \token ->
+  token == 'true'
 
 listStart      = '('
 listEnd        = ')'
