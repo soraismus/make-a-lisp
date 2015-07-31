@@ -1,8 +1,8 @@
 blank?         = require './isBlank'
 default-prompt = require './default_prompt'
+read           = require './read'
 readline       = require './readline'
 
-read             = \str -> str
 evaluate         = \env \ast -> ast
 print            = \exp -> exp
 process          = \str -> print (evaluate {} (read str))
