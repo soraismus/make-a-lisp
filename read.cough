@@ -3,7 +3,15 @@
 blank?   = require './isBlank'
 jsArray? = require './isJsArray'
 
-{ createMalHash, createMalList, createMalVector } = require './types'
+{
+  createMalKeyword
+  createMalNumber
+  createMalString
+  createMalSymbol
+  FALSE
+  NIL
+  TRUE
+} = require './types'
 
 { DEREF, QUASIQUOTE, QUOTE, SPLICE-UNQUOTE, UNQUOTE } =
   require './metaSymbols'
@@ -14,6 +22,54 @@ absent? = \tokenArray ->
 # WET; cf. `metaReducible?`
 arrayReducible? = \stack ->
   reducible? stack && penultimateIsArray? stack
+
+atomize = \token ->
+  switch
+    when integerToken? token then createMalNumber (getIntegerValue token)
+    when floatToken? token   then createMalNumber (getFloatValue token)
+    when stringToken? token  then createMalString (getStringValue token)
+    when keywordToken? token then createMalKeyword (getKeywordValue token)
+    when nilToken? token     then NIL
+    when trueToken? token    then TRUE
+    when falseToken? token   then FALSE
+    else                          createMalSymbol token
+
+falseToken? = \token ->
+  token == 'false'
+
+nilToken? = \token ->
+  token == 'nil'
+
+trueToken? = \token ->
+  token == 'true'
+
+getFloatValue = \value ->
+  parseFloat (value, 10)
+
+floatToken? = \token ->
+  /^-?[0-9]+.[0-9]+$/.test token
+
+getIntegerValue = \token ->
+  parseInt (token, 10)
+
+integerToken? = \token ->
+  /^-?[0-9]+$/.test token
+
+getKeywordValue = \val ->
+  val[1..]
+
+keywordToken? = \token ->
+  colon = ':'
+  token[0] == colon
+
+getStringValue = \val ->
+  val.slice(1, val.length - 1)
+     .replace(/\\"/g, '"')
+     .replace(/\\n/g, '"')
+
+stringToken? = \token ->
+  doubleQuote = '"'
+  token[0] == doubleQuote
 
 available? = \str ->
   ! blank? str
@@ -49,11 +105,71 @@ reducible? = \stack ->
   stack.length > 1
 
 parse = \tokens ->
-  stack = []
-  for token in tokens
-    manage! = getTokenManager token
-    manage! (stack, token)
-  stack.pop ()
+  token = tokens[0]
+  if start? token
+    intermediateResult = []
+    for 
+  else if end? token
+  else 
+
+last = \array ->
+  array[array.length - 1]
+
+push = \array \value ->
+  array.push value
+  array
+
+_p = (token, tokens, complex) ->
+  if start? token
+    correspondingEnd = getCorrespondingEnd token
+    until (_token = tokens.pop ()) == correspondingEnd
+      if start? _token
+        push (last (push complex [])) (_p (_token, tokens, complex))
+      else if end? _token
+        array = complex.pop ()
+        push (last complex) (getSeqConstructor _token array)
+      else
+        push (last complex) _token
+    array = complex.pop ()
+    getSeqConstructor _token array
+  else
+    token
+
+# To copy an array `xs`: `xs.slice 0`
+_parse2 = (token, remainingTokens) ->
+  switch
+    when start? token
+      correspondingEndToken = getCorrespondingEndToken token
+      container = []
+      until ((_token = remainingTokens.pop ()) == correspondingEndToken
+        [malValue, remainingTokens] = _parse2 (_token, remainingTokens.slice(0))
+        container.push (_parse2 (_token, remainingTokens.slice 0))
+    else
+      [(atomize token), remainingTokens.slice(0)]
+
+_parse = (token, remainingTokens) ->
+  switch
+    when start? token
+      createMalContainer = getMalContainerFactory token
+      correspondingEnd? = correspondingEndFor token
+      container = []
+      i = 0
+      while remainingTokens.length > 0
+        nextToken = remainingTokens[i]
+        i++
+        if correspondingEnd? nextToken
+          return getMalContainerFactory container
+        else  
+          container.push (atomize nextToken)
+      throw 'no corresponding end'
+    when end? token
+      null
+    when meta? token
+      null
+    when metadataMarker? token
+      null
+    else
+      atomize token
 
 # WET; cf. `penultimateIsArray?`
 penultimateIsArray? = penultimate array?
