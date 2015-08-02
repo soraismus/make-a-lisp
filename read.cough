@@ -1,7 +1,8 @@
 'use strict'
 
-blank?       = require './isBlank'
-{ jsArray? } = require './js-types'
+blank?                = require './isBlank'
+{ jsArray? }          = require './js-types'
+{ throwCommentError } = require './error-management'
 
 {
   createStream!
@@ -52,10 +53,10 @@ getFloatValue = \value ->
 getIntegerValue = \token ->
   parseInt (token, 10)
 
-# TODO: Manage escaped characters.
 getStringValue = \val ->
-  #val.slice(1, val.length - 1).replace(/\\"/g, '"').replace(/\\n/g, '"')
   val.slice(1, val.length - 1)
+     .replace(/\\"/g, '"')
+     .replace(/\\n/g, '\n')
 
 getSeqConstructor = \endToken ->
   seqTypeConstructors[endToken] ??  \value -> throw 'Invalid end token'
@@ -83,6 +84,10 @@ available? = \str ->
 comment? = \token ->
   token[0] == commentStart
 
+manageEmptyTokens! = \tokens ->
+  # If the `tokens` array should only be empty for comments.
+  throwCommentError () if tokens.length == 0
+
 meta? = \token ->
   token in metaTokens
 
@@ -99,6 +104,7 @@ _parse = (token, tokens) ->
     else                   atomize token
 
 parse = \tokens ->
+  manageEmptyTokens! tokens
   _parse ((shift tokens), tokens)
 
 parseMeta = (metaToken, tokens) ->

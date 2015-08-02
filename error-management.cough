@@ -1,0 +1,11 @@
+'use strict'
+
+commentError? = \error ->
+  error.message == commentErrorMessage
+
+throwCommentError = ->
+  throw new Error commentErrorMessage
+
+commentErrorMessage = 'The line to be parsed only contains a comment.'
+
+module.exports = { commentError?, throwCommentError }

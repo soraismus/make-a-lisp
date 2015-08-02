@@ -1,8 +1,11 @@
-blank?         = require './isBlank'
-default-prompt = require './default_prompt'
-print          = require './print'
-read           = require './read'
-readline       = require './readline'
+'use strict'
+
+blank?            = require './isBlank'
+{ commentError? } = require './error-management'
+default-prompt    = require './default_prompt'
+print             = require './print'
+read              = require './read'
+readline          = require './readline'
 
 evaluate = \env \ast -> ast
 process  = \str -> print (evaluate {} (read str))
@@ -11,4 +14,10 @@ write_to_console = console.log
 
 while ? (line = readline default-prompt)
   continue if blank? line
-  write_to_console (process line)
+  try
+    write_to_console (process line)
+  catch error
+    if commentError? error
+      continue
+    else
+      write_to_console error
