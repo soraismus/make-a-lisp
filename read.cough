@@ -26,9 +26,6 @@ blank?       = require './isBlank'
 { DEREF, QUASIQUOTE, QUOTE, SPLICE-UNQUOTE, UNQUOTE } =
   require './meta-symbols'
 
-allSeqsAreCompleted? = \cache ->
-  ! notAllSeqsAreCompleted? cache
-
 atomize = \token ->
   switch
     when integerToken? token then createMalNumber (getIntegerValue token)
@@ -46,33 +43,6 @@ falseToken? = \token ->
 floatToken? = \token ->
   /^-?[0-9]+.[0-9]+$/.test token
 
-getAndValidateNextToken! = \getNextToken ->
-  cache =
-    '(' : 0
-    '[' : 0
-    '{' : 0
-    ')' : 0
-    ']' : 0
-    '}' : 0
-
-  stream = ->
-    token = getNextToken ()
-    increment (cache, token) unless streamEnd? token
-    unless startTokensHavePreceded? cache
-      throw 'Start tokens must precede end tokens'
-
-    # TODO:
-    #if !(start? token && allSeqsAreCompleted? cache)
-    #  throw 'Error message TBD'
-
-    if streamEnd? token && notAllSeqsAreCompleted? cache
-      throw 'All seqs must be terminated with an appropriate end token'
-    token
-
-  (stream[key] = value) for own key, value of getNextToken
-
-  stream
-
 getCorrespondingMetaSymbol = \metaToken ->
   metaSymbols[metaToken]
 
@@ -82,10 +52,9 @@ getFloatValue = \value ->
 getIntegerValue = \token ->
   parseInt (token, 10)
 
+TODO: Manage escaped characters.
 getStringValue = \val ->
-  #val.slice(1, val.length - 1)
-  #   .replace(/\\"/g, '"')
-  #   .replace(/\\n/g, '"')
+  #val.slice(1, val.length - 1).replace(/\\"/g, '"').replace(/\\n/g, '"')
   val.slice(1, val.length - 1)
 
 getSeqConstructor = \endToken ->
@@ -114,9 +83,6 @@ available? = \str ->
 comment? = \token ->
   token[0] == commentStart
 
-end? = \token ->
-  token in endTokens
-
 # no-op
 ignore! = (stack, token) ->
 
@@ -129,18 +95,11 @@ metadataMarker? = \token ->
 nilToken? = \token ->
   token == 'nil'
 
-notAllSeqsAreCompleted? = \cache ->
-  cache[listStart] != cache[listEnd] ||
-    cache[vectorStart] != cache[vectorEnd] ||
-    cache[hashmapStart] != cache[hashmapEnd]
-
 _parse = (token, tokens) ->
   switch
-    when token == hashmapStart then parseHash tokens
-    when token == listStart    then parseList tokens
-    when token == vectorStart  then parseVector tokens
-    when meta? token           then parseMeta (token, tokens)
-    else                            atomize token
+    when start? token then parseSeq token tokens
+    when meta? token  then parseMeta (token, tokens)
+    else                   atomize token
 
 parse = \tokens ->
   _parse ((shift tokens), tokens)
@@ -151,11 +110,14 @@ parseMeta = (metaToken, tokens) ->
     parse tokens
   ]
 
-parseSeq = (seqEnd, createMalSeq) -> (tokens) ->
+parseSeq = \startToken ->
+  seqParsers[startToken]
+
+createSeqParser = \endToken \tokens ->
   array = []
-  until (token = shift tokens) == seqEnd
+  until (token = shift tokens) == endToken
     array.push (_parse (token, tokens))
-  createMalSeq array
+  getSeqConstructor endToken array
 
 # TODO: Separate `tokenize` and `parse` into separate files.
 read = \str ->
@@ -166,11 +128,6 @@ shift = \queue ->
 
 start? = \token ->
   token in startTokens
-
-startTokensHavePreceded? = \cache ->
-  cache[listStart] >= cache[listEnd] &&
-    cache[vectorStart] >= cache[vectorEnd] &&
-    cache[hashmapStart] >= cache[hashmapEnd]
 
 tokenize = \str ->
   tokenRegex =
@@ -199,7 +156,6 @@ spliceUnquote  = '~@'
 metadataMarker = '^'
 
 startTokens = [listStart, vectorStart, hashmapStart]
-endTokens   = [listEnd, vectorEnd, hashmapEnd]
 metaTokens  = [deref, quote, quasiquote, unquote, spliceUnquote]
 
 metaSymbols =
@@ -214,8 +170,12 @@ seqTypeConstructors =
   ']' : createMalVector
   '}' : createMalHash
 
-parseHash   = parseSeq (hashmapEnd, createMalHash)
-parseList   = parseSeq (listEnd, createMalList)
-parseVector = parseSeq (vectorEnd, createMalVector)
+[parseHash, parseList, parseVector] =
+  [hashmapEnd, listEnd, vectorEnd].map createSeqParser
+
+seqParsers =
+  '(' : parseList
+  '[' : parseVector
+  '{' : parseHash
 
 module.exports = read
