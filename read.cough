@@ -116,7 +116,6 @@ createSeqParser = \endToken \tokens ->
     array.push (_parse (token, tokens))
   getSeqConstructor endToken array
 
-# TODO: Separate `tokenize` and `parse` into separate files.
 read = \str ->
   parse (tokenize str)
 
