@@ -1,0 +1,90 @@
+{
+  accessHashCache
+  malAtom?
+  malHash?
+  malFalse?
+  malFunction?
+  malKeyword?
+  malList?
+  malMacro?
+  malNil?
+  malNumber?
+  malSeq?
+  malString?
+  malSymbol?
+  malTrue?
+  malVector?
+} = require './mal-types'
+
+addTerminators = ([start, stop]) ->
+  \string -> start + string + stop
+
+identity = \value ->
+  value 
+
+getPrinter = \malValue ->
+  switch
+    when malAtom? malValue     then printAtom
+    when malHash? malValue     then printHash
+    when malFalse? malValue    then printFalse
+    when malFunction? malValue then printFunction
+    when malKeyword? malValue  then printKeyword
+    when malList? malValue     then printList
+    when malMacro? malValue    then printMacro
+    when malNil? malValue      then printNil
+    when malNumber? malValue   then printNumber
+    when malString? malValue   then printString
+    when malSymbol? malValue   then printSymbol
+    when malTrue? malValue     then printTrue
+    when malVector? malValue   then printVector
+    else                            identity
+
+print = \malValue ->
+  getPrinter malValue malValue
+
+printConstant = \constant \value ->
+  constant
+
+printGeneralMalValue = \malValue ->
+  malValue.value
+
+printHash = \malHash ->
+  array = []
+  for own key, value of malHash.value
+    array.push "#{print (accessHashCache key)} #{print value}"
+  addBraces (array.join ' ')
+
+printKeyword = \malKeyword ->
+  ':' + (printGeneralMalValue malKeyword)
+
+printList = \malList ->
+  addParentheses ((malList.value.map print).join(' '))
+
+printNumber = \malNumber ->
+  (printGeneralMalValue malNumber).toString ()
+
+printString = \malString ->
+  addDoubleQuotes (printGeneralMalValue malString)
+
+printVector = \malVector ->
+  addBrackets ((malVector.value.map print).join(' '))
+
+TERMINATORS = [
+  braces       = ['{ ', ' }']
+  brackets     = ['[', ']']
+  doubleQuotes = ['"', '"']
+  parentheses  = ['(', ')']
+]
+
+[addBraces, addBrackets, addDoubleQuotes, addParentheses] =
+  TERMINATORS.map addTerminators
+
+printAtom     = printGeneralMalValue
+printFunction = -> 'function'
+printMacro    = -> 'macro'
+printSymbol   = printGeneralMalValue
+
+[printFalse, printNil, printTrue] =
+  ['false', 'nil', 'true'].map printConstant
+
+module.exports = print

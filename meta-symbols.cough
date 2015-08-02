@@ -1,4 +1,4 @@
-{ createMalSymbol } = require './types'
+{ createMalSymbol } = require './mal-types'
 
 [DEREF, QUASIQUOTE, QUOTE, SPLICE-UNQUOTE, UNQUOTE] =
   [

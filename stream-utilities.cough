@@ -1,7 +1,11 @@
 createStream! = \array ->
-  () ->
+  stream = () ->
     value = array.shift () # Destructive operation.
     if value == undefined then streamEnd else value
+  stream.peek = () ->
+    value = array[0]
+    if value == undefined then streamEnd else value
+  stream
 
 EndRequest = \value ->
   this.value = value
@@ -26,4 +30,9 @@ streamEnd? = \value ->
 
 streamEnd = {}
 
-module.exports = { createStream!, forEach, streamEnd?, stopStreamingWith }
+module.exports = {
+  createStream!
+  forEach
+  streamEnd?
+  stopStreamingWith
+}

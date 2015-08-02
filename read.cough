@@ -1,11 +1,12 @@
 'use strict'
 
-blank?   = require './isBlank'
-jsArray? = require './isJsArray'
+blank?       = require './isBlank'
+{ jsArray? } = require './js-types'
 
 {
   createStream!
   forEach
+  prependValueToStream
   streamEnd?
 } = require './stream-utilities'
 
@@ -20,10 +21,12 @@ jsArray? = require './isJsArray'
   FALSE
   NIL
   TRUE
-} = require './types'
+} = require './mal-types'
 
 { DEREF, QUASIQUOTE, QUOTE, SPLICE-UNQUOTE, UNQUOTE } =
   require './meta-symbols'
+
+log = console.log
 
 allSeqsAreCompleted? = \cache ->
   ! notAllSeqsAreCompleted? cache
@@ -54,7 +57,7 @@ getAndValidateNextToken! = \getNextToken ->
     ']' : 0
     '}' : 0
 
-  ->
+  stream = ->
     token = getNextToken ()
     increment (cache, token) unless streamEnd? token
     unless startTokensHavePreceded? cache
@@ -68,14 +71,27 @@ getAndValidateNextToken! = \getNextToken ->
       throw 'All seqs must be terminated with an appropriate end token'
     token
 
+  (stream[key] = value) for own key, value of getNextToken
+
+  stream
+
+getCorrespondingMetaSymbol = \metaToken ->
+  metaSymbols[metaToken]
+
 getFloatValue = \value ->
   parseFloat (value, 10)
 
-getSeqConstructor = \endToken ->
-  seqTypeConstructors[endToken] ??  \value -> throw 'Invalid end token'
-
 getIntegerValue = \token ->
   parseInt (token, 10)
+
+getStringValue = \val ->
+  #val.slice(1, val.length - 1)
+  #   .replace(/\\"/g, '"')
+  #   .replace(/\\n/g, '"')
+  val.slice(1, val.length - 1)
+
+getSeqConstructor = \endToken ->
+  seqTypeConstructors[endToken] ??  \value -> throw 'Invalid end token'
 
 increment = (cache, token) ->
   cache[token]++
@@ -89,11 +105,6 @@ getKeywordValue = \val ->
 keywordToken? = \token ->
   colon = ':'
   token[0] == colon
-
-getStringValue = \val ->
-  val.slice(1, val.length - 1)
-     .replace(/\\"/g, '"')
-     .replace(/\\n/g, '"')
 
 stringToken? = \token ->
   doubleQuote = '"'
@@ -125,21 +136,67 @@ notAllSeqsAreCompleted? = \cache ->
     cache[vectorStart] != cache[vectorEnd] ||
     cache[hashmapStart] != cache[hashmapEnd]
 
-_parse = \stack \token ->
-  switch
-    when start? token
-      push stack []
-    when end? token
-      array = pop stack
-      push (peek stack) (getSeqConstructor token array)
-    else
-      push (peek stack) (atomize token)
+parseStack = \stack ->
+  log 'parseStack'
 
-parse = \getNextToken ->
-  token = getNextToken ()
-  return token unless start? token
-  stack = [[]]
-  forEach getNextToken (_parse stack)
+  metaSymbolInStack? = false
+  processingSeq?     = false
+
+  shouldCompleteMetaForm? = ->
+    metaSymbolInStack? && !processingSeq?
+
+  completeMetaForm = ->
+    log 'completeMetaForm'
+    metaSymbolInStack? = false
+    array = pop stack
+    push (peek stack) (createMalList array)
+    log '   stack: '
+    log stack
+
+  \token ->
+    switch
+      when start? token
+        log 'start'
+        processingSeq? = true
+        push stack []
+        log '   stack: '
+        log stack
+      when end? token
+        log 'end'
+        processingSeq? = false
+        array = pop stack
+        push (peek stack) (getSeqConstructor token array)
+        log '   stack: '
+        log stack
+        completeMetaForm () if shouldCompleteMetaForm? ()
+      when meta? token
+        log 'meta'
+        metaSymbolInStack? = true
+        push stack [getCorrespondingMetaSymbol token]
+        log '   stack: '
+        log stack
+      when shouldCompleteMetaForm? ()
+        log 'about to complete metaForm for non-start/end token'
+        push (peek stack) (atomize token)
+        log '   stack: '
+        log stack
+        completeMetaForm ()
+      else
+        log 'default'
+        log '   token:'
+        log token
+        push (peek stack) (atomize token)
+        log '   stack: '
+        log stack
+
+parseStream = \getNextToken ->
+  log 'parseStream'
+  token = getNextToken.peek ()
+  log ('token: ' + token)
+  return (atomize token) unless start? token || meta? token
+  stack = []
+  parseToken = parseStack stack
+  forEach getNextToken parseToken
   pop stack
 
 peek = \stack ->
@@ -152,8 +209,9 @@ push = \array \value ->
   array.push value
   array
 
+# TODO: Separate `tokenize` and `parse` into separate files.
 read = \str ->
-  ; parse getAndValidateNextToken! createStream! tokenize ; str
+  ; parseStream getAndValidateNextToken! createStream! tokenize ; str
 
 start? = \token ->
   token in startTokens

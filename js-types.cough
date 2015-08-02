@@ -1,0 +1,50 @@
+getArrayId = \array ->
+  fn = (value, index) -> "#{index}:#{getJsId value}"
+  array.map(fn).join(',')
+
+getFunctionId = \fn ->
+  fn.toString ()
+
+_getJsId = \value ->
+  switch
+    when jsNumber? value   then getNumberId
+    when jsString? value   then getStringId
+    when jsArray? value    then getArrayId
+    when jsObject? value   then getObjectId
+    when jsFunction? value then getFunctionId
+    when jsTrue? value     then -> 'true'
+    when jsFalse? value    then -> 'false'
+    when jsNull? value     then -> 'null'
+    else                        toString
+
+getJsId = \value ->
+  _getJsId value value
+
+getNumberId = \number ->
+  number.toString ()
+     
+getObjectId = \object ->
+  return object.id if 'id' of object
+
+  id = ''
+  for own value, key of object
+    unless key in ['bind', 'id', 'type']
+      id += "#{key}:#{getJsId value},"
+  id
+
+getStringId = \string ->
+  string
+
+toString = \value ->
+  Object.prototype.toString.call value
+
+jsArray? = Array.isArray
+
+[jsFalse?, jsNull?, jsTrue?] =
+  [false, null, true].map \constant \value -> value == constant
+
+[jsFunction?, jsNumber?, jsObject?, jsString?] =
+  ['Function', 'Number', 'Object', 'String'].map \kind \value ->
+    "[object #{kind}]" == toString value
+
+module.exports = { getJsId, jsArray? }

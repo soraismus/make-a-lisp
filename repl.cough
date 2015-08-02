@@ -1,11 +1,12 @@
 blank?         = require './isBlank'
 default-prompt = require './default_prompt'
+print          = require './print'
 read           = require './read'
 readline       = require './readline'
 
-evaluate         = \env \ast -> ast
-print            = \exp -> exp
-process          = \str -> print (evaluate {} (read str))
+evaluate = \env \ast -> ast
+process  = \str -> print (evaluate {} (read str))
+
 write_to_console = console.log
 
 while ? (line = readline default-prompt)
