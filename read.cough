@@ -26,8 +26,6 @@ blank?       = require './isBlank'
 { DEREF, QUASIQUOTE, QUOTE, SPLICE-UNQUOTE, UNQUOTE } =
   require './meta-symbols'
 
-log = console.log
-
 allSeqsAreCompleted? = \cache ->
   ! notAllSeqsAreCompleted? cache
 
@@ -136,82 +134,49 @@ notAllSeqsAreCompleted? = \cache ->
     cache[vectorStart] != cache[vectorEnd] ||
     cache[hashmapStart] != cache[hashmapEnd]
 
-parseStack = \stack ->
-  log 'parseStack'
+_parse = (token, tokens) ->
+  switch
+    when token == hashmapStart then parseHash tokens
+    when token == listStart    then parseList tokens
+    when token == vectorStart  then parseVector tokens
+    when meta? token           then parseMeta (token, tokens)
+    else                            atomize token
 
-  metaSymbolInStack? = false
-  processingSeq?     = false
+parse = \tokens ->
+  _parse ((shift tokens), tokens)
 
-  shouldCompleteMetaForm? = ->
-    metaSymbolInStack? && !processingSeq?
+parseMeta = (metaToken, tokens) ->
+  createMalList [
+    getCorrespondingMetaSymbol metaToken  
+    parse tokens
+  ]
 
-  completeMetaForm = ->
-    log 'completeMetaForm'
-    metaSymbolInStack? = false
-    array = pop stack
-    push (peek stack) (createMalList array)
-    log '   stack: '
-    log stack
+# WET; cf. `parseList`.
+parseHash = \tokens ->
+  array = []
+  until (token = shift tokens) == hashmapEnd
+    array.push (_parse (token, tokens))
+  createMalHash array
 
-  \token ->
-    switch
-      when start? token
-        log 'start'
-        processingSeq? = true
-        push stack []
-        log '   stack: '
-        log stack
-      when end? token
-        log 'end'
-        processingSeq? = false
-        array = pop stack
-        push (peek stack) (getSeqConstructor token array)
-        log '   stack: '
-        log stack
-        completeMetaForm () if shouldCompleteMetaForm? ()
-      when meta? token
-        log 'meta'
-        metaSymbolInStack? = true
-        push stack [getCorrespondingMetaSymbol token]
-        log '   stack: '
-        log stack
-      when shouldCompleteMetaForm? ()
-        log 'about to complete metaForm for non-start/end token'
-        push (peek stack) (atomize token)
-        log '   stack: '
-        log stack
-        completeMetaForm ()
-      else
-        log 'default'
-        log '   token:'
-        log token
-        push (peek stack) (atomize token)
-        log '   stack: '
-        log stack
+parseList = \tokens ->
+  array = []
+  until (token = shift tokens) == listEnd
+    array.push (_parse (token, tokens))
+  createMalList array
 
-parseStream = \getNextToken ->
-  log 'parseStream'
-  token = getNextToken.peek ()
-  log ('token: ' + token)
-  return (atomize token) unless start? token || meta? token
-  stack = []
-  parseToken = parseStack stack
-  forEach getNextToken parseToken
-  pop stack
-
-peek = \stack ->
-  stack[stack.length - 1] ?? stack
-
-pop = \stack ->
-  stack.pop ()
-
-push = \array \value ->
-  array.push value
-  array
+# WET; cf. `parseList`.
+parseVector = \tokens ->
+  array = []
+  until (token = shift tokens) == vectorEnd
+    push array (_parse (token, tokens))
+  createMalVector array
 
 # TODO: Separate `tokenize` and `parse` into separate files.
 read = \str ->
-  ; parseStream getAndValidateNextToken! createStream! tokenize ; str
+  parse (tokenize str)
+
+shift = \queue ->
+  queue.shift ()
 
 start? = \token ->
   token in startTokens
