@@ -52,7 +52,7 @@ getFloatValue = \value ->
 getIntegerValue = \token ->
   parseInt (token, 10)
 
-TODO: Manage escaped characters.
+# TODO: Manage escaped characters.
 getStringValue = \val ->
   #val.slice(1, val.length - 1).replace(/\\"/g, '"').replace(/\\n/g, '"')
   val.slice(1, val.length - 1)
@@ -82,9 +82,6 @@ available? = \str ->
 
 comment? = \token ->
   token[0] == commentStart
-
-# no-op
-ignore! = (stack, token) ->
 
 meta? = \token ->
   token in metaTokens
