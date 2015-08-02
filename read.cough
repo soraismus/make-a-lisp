@@ -151,25 +151,11 @@ parseMeta = (metaToken, tokens) ->
     parse tokens
   ]
 
-# WET; cf. `parseList`.
-parseHash = \tokens ->
+parseSeq = (seqEnd, createMalSeq) -> (tokens) ->
   array = []
-  until (token = shift tokens) == hashmapEnd
+  until (token = shift tokens) == seqEnd
     array.push (_parse (token, tokens))
-  createMalHash array
-
-parseList = \tokens ->
-  array = []
-  until (token = shift tokens) == listEnd
-    array.push (_parse (token, tokens))
-  createMalList array
-
-# WET; cf. `parseList`.
-parseVector = \tokens ->
-  array = []
-  until (token = shift tokens) == vectorEnd
-    push array (_parse (token, tokens))
-  createMalVector array
+  createMalSeq array
 
 # TODO: Separate `tokenize` and `parse` into separate files.
 read = \str ->
@@ -227,5 +213,9 @@ seqTypeConstructors =
   ')' : createMalList
   ']' : createMalVector
   '}' : createMalHash
+
+parseHash   = parseSeq (hashmapEnd, createMalHash)
+parseList   = parseSeq (listEnd, createMalList)
+parseVector = parseSeq (vectorEnd, createMalVector)
 
 module.exports = read
