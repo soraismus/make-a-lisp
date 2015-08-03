@@ -3,7 +3,6 @@
 { throwEnvironmentError } = require './error-management'
 
 {
-  call
   callWithFullAccess
   createMalHash
   createMalList
@@ -38,7 +37,7 @@ _evalList = (symbols, list) ->
     createMalList (jsArray.map (evaluate symbols))
 
 evalList = (symbols, list) ->
-  reduce (_evalList (symbols, list))
+  callWithFullAccess (_evalList (symbols, list))
 
 # WET; cf. `_evalList`
 evalVector = (symbols, vector) ->
@@ -58,8 +57,5 @@ _evaluate = (symbols, value) ->
 
 evaluate = \symbols \value ->
   _evaluate (symbols, value)
-
-reduce = \list ->
-  callWithFullAccess list
 
 module.exports = evaluate

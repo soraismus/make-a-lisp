@@ -15,10 +15,6 @@ associateKeysAndValues = \jsArray-of-malValues ->
     jsObject[id] = jsArray-of-malValues[index + 1]
   jsObject
 
-_call = (malFn, malValues...) ->
-  malFn.bind \jsFn ->
-    jsFn ((extractJsValues malValues)...)
-
 _callWithFullAccess = (malFn, malValues...) ->
   malFn.bind \jsFn -> jsFn malValues...
 
@@ -145,12 +141,10 @@ TRUE  = createMalTrue true
 # Probable source of memory leaks:
 HASH-CACHE = {}
 
-[call, callWithFullAccess] =
-  [_call, _callWithFullAccess].map reduceMalListWith
+callWithFullAccess = reduceMalListWith _callWithFullAccess
 
 module.exports = {
   accessHashCache
-  call
   callWithFullAccess
   convertMalBoolean
   createMalAtom
