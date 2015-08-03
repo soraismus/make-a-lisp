@@ -12,12 +12,17 @@ blank?                = require './isBlank'
 } = require './stream-utilities'
 
 {
+  createMalDerefSeq
   createMalHash
   createMalKeyword
   createMalList
   createMalNumber
+  createMalQuasiquoteSeq
+  createMalQuoteSeq
+  createMalSpliceUnquoteSeq
   createMalString
   createMalSymbol
+  createMalUnquoteSeq
   createMalVector
   FALSE
   NIL
@@ -52,6 +57,9 @@ getFloatValue = \value ->
 
 getIntegerValue = \token ->
   parseInt (token, 10)
+
+getMetaSeqTypeConstructor = \metaToken ->
+  metaSeqTypeConstructors[metaToken] ?? \value -> throw 'Invalid meta token'
 
 getStringValue = \val ->
   val.slice(1, val.length - 1)
@@ -108,10 +116,13 @@ parse = \tokens ->
   _parse ((shift tokens), tokens)
 
 parseMeta = (metaToken, tokens) ->
-  createMalList [
+  constructor = getMetaSeqTypeConstructor metaToken
+  array = [
     getCorrespondingMetaSymbol metaToken  
     parse tokens
   ]
+  value = constructor array
+  value
 
 parseSeq = \startToken ->
   seqParsers[startToken]
@@ -153,12 +164,19 @@ commentStart   = ';'
 deref          = '@'
 quote          = '\'' 
 quasiquote     = '`'
-unquote        = '~'
 spliceUnquote  = '~@'
+unquote        = '~'
 metadataMarker = '^'
 
 startTokens = [listStart, vectorStart, hashmapStart]
-metaTokens  = [deref, quote, quasiquote, unquote, spliceUnquote]
+metaTokens  = [deref, quote, quasiquote, spliceUnquote, unquote]
+
+metaSeqTypeConstructors =
+  '@'  : createMalDerefSeq
+  '`'  : createMalQuasiquoteSeq
+  '\'' : createMalQuoteSeq
+  '~@' : createMalSpliceUnquoteSeq
+  '~'  : createMalUnquoteSeq
 
 metaSymbols =
   '@'  : DEREF

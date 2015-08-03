@@ -9,6 +9,7 @@
   createMalVector
   getSeqConstructor
   malAtom?
+  malDerefSeq?
   malHash?
   malFalse?
   malKeyword?
@@ -16,11 +17,15 @@
   malMacro?
   malNil?
   malNumber?
+  malQuasiquoteSeq? 
+  malQuoteSeq?
   malSeq?
+  malSpliceUnquoteSeq?
   malString?
   malFunction?
   malSymbol?
   malTrue?
+  malUnquoteSeq?
   malVector?
   unassociateKeysAndValues
 } = require './mal-types'
@@ -39,6 +44,9 @@ _evalList = (symbols, list) ->
 evalList = (symbols, list) ->
   call (_evalList (symbols, list))
 
+evalQuoteSeq = \quoteSeq ->
+  quoteSeq.bind \jsArray -> jsArray[1]
+
 # WET; cf. `_evalList`
 evalVector = (symbols, vector) ->
   vector.bind \jsArray -> createMalVector (jsArray.map (evaluate symbols))
@@ -49,11 +57,16 @@ evalSymbol = (symbols, symbol) ->
 
 _evaluate = (symbols, value) ->
   switch
-    when malSymbol? value then evalSymbol (symbols, value)
-    when malList? value   then evalList (symbols, value)
-    when malVector? value then evalVector (symbols, value)
-    when malHash? value   then evalHashmap (symbols, value)
-    else                       value
+    when malSymbol? value           then evalSymbol (symbols, value)
+    when malList? value             then evalList (symbols, value)
+    when malVector? value           then evalVector (symbols, value)
+    when malHash? value             then evalHashmap (symbols, value)
+    when malDerefSeq? value         then value
+    when malQuasiquoteSeq? value    then value
+    when malQuoteSeq? value         then evalQuoteSeq value
+    when malSpliceUnquoteSeq? value then value
+    when malUnquoteSeq? value       then value
+    else                                 value
 
 evaluate = \symbols \value ->
   _evaluate (symbols, value)

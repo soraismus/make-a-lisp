@@ -83,50 +83,65 @@ unassociateKeysAndValues = \jsObject ->
   jsArray
 
 MAL-TYPES = [
-  MAL-ATOM-TYPE     = 'atom'
-  MAL-FALSE-TYPE    = 'false'
-  MAL-FUNCTION-TYPE = 'function'
-  MAL-HASH-TYPE     = 'hash'
-  MAL-KEYWORD-TYPE  = 'keyword'
-  MAL-LIST-TYPE     = 'list'
-  MAL-MACRO-TYPE    = 'macro'
-  MAL-NIL-TYPE      = 'nil'
-  MAL-NUMBER-TYPE   = 'number'
-  MAL-STRING-TYPE   = 'string'
-  MAL-SYMBOL-TYPE   = 'symbol'
-  MAL-TRUE-TYPE     = 'true'
-  MAL-VECTOR-TYPE   = 'vector'
+  MAL-ATOM-TYPE               = 'atom'
+  MAL-DEREF-SEQ-TYPE          = 'derefSeq'
+  MAL-FALSE-TYPE              = 'false'
+  MAL-FUNCTION-TYPE           = 'function'
+  MAL-HASH-TYPE               = 'hash'
+  MAL-KEYWORD-TYPE            = 'keyword'
+  MAL-LIST-TYPE               = 'list'
+  MAL-MACRO-TYPE              = 'macro'
+  MAL-NIL-TYPE                = 'nil'
+  MAL-NUMBER-TYPE             = 'number'
+  MAL-QUASIQUOTE-SEQ-TYPE     = 'quasiquoteSeq'
+  MAL-QUOTE-SEQ-TYPE          = 'quoteSeq'
+  MAL-SPLICE-UNQUOTE-SEQ-TYPE = 'spliceUnquoteSeq'
+  MAL-STRING-TYPE             = 'string'
+  MAL-SYMBOL-TYPE             = 'symbol'
+  MAL-TRUE-TYPE               = 'true'
+  MAL-UNQUOTE-SEQ-TYPE        = 'unquoteSeq'
+  MAL-VECTOR-TYPE             = 'vector'
 ]
 
 MAL-TYPE-SIGILS =
-  'atom'     : '@'
-  'false'    : '-'
-  'function' : 'λ'
-  'hash'     : '{'
-  'keyword'  : ':'
-  'list'     : '('
-  'macro'    : 'μ'
-  'nil'      : '_'
-  'number'   : '#'
-  'string'   : '"'
-  'symbol'   : '*'
-  'true'     : '+'
-  'vector'   : '['
+  'atom'             : '@'
+  'derefSeq'         : '0'
+  'false'            : '-'
+  'function'         : 'λ'
+  'hash'             : '{'
+  'keyword'          : ':'
+  'list'             : '('
+  'macro'            : 'μ'
+  'nil'              : '_'
+  'number'           : '#'
+  'quasiquoteSeq'    : '1'
+  'quoteSeq'         : '2'
+  'spliceUnquoteSeq' : '3'
+  'string'           : '"'
+  'symbol'           : '*'
+  'true'             : '+'
+  'unquoteSeq'       : '4'
+  'vector'           : '['
 
 [
-  [createMalAtom,     malAtom?    ]
-  [createMalFalse,    malFalse?   ]
-  [createMalFunction, malFunction?]
-  [_createMalHash,    malHash?    ]
-  [createMalKeyword,  malKeyword? ]
-  [createMalList,     malList?    ]
-  [createMalMacro,    malMacro?   ]
-  [createMalNil,      malNil?     ]
-  [createMalNumber,   malNumber?  ]
-  [createMalString,   malString?  ]
-  [createMalSymbol,   malSymbol?  ]
-  [createMalTrue,     malTrue?    ]
-  [createMalVector,   malVector?  ]
+  [createMalAtom,             malAtom?            ]
+  [createMalDerefSeq,         malDerefSeq?        ]
+  [createMalFalse,            malFalse?           ]
+  [createMalFunction,         malFunction?        ]
+  [_createMalHash,            malHash?            ]
+  [createMalKeyword,          malKeyword?         ]
+  [createMalList,             malList?            ]
+  [createMalMacro,            malMacro?           ]
+  [createMalNil,              malNil?             ]
+  [createMalNumber,           malNumber?          ]
+  [createMalQuasiquoteSeq,    malQuasiquoteSeq?   ]
+  [createMalQuoteSeq,         malQuoteSeq?        ]
+  [createMalSpliceUnquoteSeq, malSpliceUnquoteSeq?]
+  [createMalString,           malString?          ]
+  [createMalSymbol,           malSymbol?          ]
+  [createMalTrue,             malTrue?            ]
+  [createMalUnquoteSeq,       malUnquoteSeq?      ]
+  [createMalVector,           malVector?          ]
 ] = MAL-TYPES.map createTypeUtilities
 
 SEQ-CONSTRUCTORS =
@@ -146,20 +161,26 @@ module.exports = {
   call
   convertMalBoolean
   createMalAtom
+  createMalDerefSeq
   createMalFunction
   createMalHash
   createMalKeyword
   createMalList
   createMalMacro
   createMalNumber
+  createMalQuasiquoteSeq
+  createMalQuoteSeq
+  createMalSpliceUnquoteSeq
   createMalString
   createMalSymbol
+  createMalUnquoteSeq
   createMalVector
   exposeProperties
   FALSE
   getMalId
   getSeqConstructor
   malAtom?
+  malDerefSeq?
   malFalse?
   malFunction?
   malHash?
@@ -168,10 +189,14 @@ module.exports = {
   malMacro?
   malNil?
   malNumber?
+  malQuasiquoteSeq? 
+  malQuoteSeq?
   malSeq?
+  malSpliceUnquoteSeq?
   malString?
   malSymbol?
   malTrue?
+  malUnquoteSeq?
   malVector?
   NIL
   TRUE
