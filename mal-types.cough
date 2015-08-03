@@ -18,6 +18,9 @@ associateKeysAndValues = \jsArray-of-malValues ->
 _call = (malFn, malValues...) ->
   malFn.bind \jsFn -> jsFn malValues...
 
+call = \malList ->
+  malList.bind \jsArray -> _call jsArray...
+
 convertMalBoolean = \jsValue ->
   if jsValue then TRUE else FALSE
 
@@ -68,9 +71,6 @@ identity = \obj ->
 
 malSeq? = \value ->
   malList? value || malVector? value
-
-reduceMalListWith = \splatAndReduce \malList ->
-  malList.bind \jsArray -> splatAndReduce jsArray...
 
 sigilize = \malType ->
   MAL-TYPE-SIGILS[malType]
@@ -140,8 +140,6 @@ TRUE  = createMalTrue true
 
 # Probable source of memory leaks:
 HASH-CACHE = {}
-
-call = reduceMalListWith _call
 
 module.exports = {
   accessHashCache
