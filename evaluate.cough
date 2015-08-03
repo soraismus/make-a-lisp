@@ -4,6 +4,7 @@
 
 {
   call
+  callWithFullAccess
   createMalHash
   createMalList
   createMalVector
@@ -33,27 +34,19 @@ evalHashmap = (symbols, hashmap) ->
   hashmap.bind \jsObject ->
     createMalHash (map (evaluate symbols) (unassociateKeysAndValues jsObject)) 
 
-# TODO: Separate the two concerns:
-# concern 1: evaluating each element in the list
-# concern 2: reducing the list
-evalList = (symbols, list) ->
-  console.log('evalList')
-  console.log('list: ', list)
-  console.log('first element of list: ', list.value[0])
-  _call = if malSuperFunction? list.value[0] then callWithFullAccess else call
-  _call (list.bind \jsArray -> createMalList (jsArray.map (evaluate symbols)))
+_evalList = (symbols, list) ->
+  list.bind \jsArray -> createMalList (jsArray.map (evaluate symbols))
 
+evalList = (symbols, list) ->
+  reduce (_evalList (symbols, list))
+
+# WET; cf. `_evalList`
 evalVector = (symbols, vector) ->
   vector.bind \jsArray -> createMalVector (jsArray.map (evaluate symbols))
 
 evalSymbol = (symbols, symbol) ->
   # Should return a malValue.
   symbols[symbol.value] ?? throwEnvironmentError ()
-
-evalSeqElements = (symbols, malSeq) ->
-  createSeq = getSeqConstructor malSeq
-  malSeq.bind \seq ->
-    createSeq (
 
 _evaluate = (symbols, value) ->
   switch
@@ -66,8 +59,10 @@ _evaluate = (symbols, value) ->
 evaluate = \symbols \value ->
   _evaluate (symbols, value)
 
-# WET.
-identity = \value ->
-  value
+reduce = \list ->
+  if malSuperFunction? (list.value[0])
+    callWithFullAccess list
+  else
+    call list
 
 module.exports = evaluate

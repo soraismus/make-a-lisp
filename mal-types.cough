@@ -20,8 +20,6 @@ _call = (malFn, malValues...) ->
     jsFn ((extractJsValues malValues)...)
 
 _callWithFullAccess = (malFn, malValues...) ->
-  console.log('_callWithFullAccess')
-  console.log('maValues: ', malValues)
   malFn.bind \jsFn -> jsFn malValues...
 
 convertMalBoolean = \jsValue ->
