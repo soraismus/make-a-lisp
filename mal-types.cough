@@ -6,24 +6,22 @@ accessHashCache = \malValueId ->
   malValue = HASH-CACHE[malValueId]
   malValue ?? throw new "No malValue has been cached for the key #{malValueId}"
 
-associateKeysAndValues = \jsArray ->
-  # --------------------------------------------------
-  # Although `jsArray` itself is a javascript array, |
-  # each of its elements must be a malValue.         |
-  # --------------------------------------------------
-  result = {}
-  for index in [0 ... jsArray.length] by 2
-    malValue-as-key = jsArray[index]
+associateKeysAndValues = \jsArray-of-malValues ->
+  jsObject = {}
+  for index in [0 ... jsArray-of-malValues.length] by 2
+    malValue-as-key = jsArray-of-malValues[index]
     id = malValue-as-key.id
     HASH-CACHE[id] = malValue-as-key
-    result[id] = jsArray[index + 1]
-  result
+    jsObject[id] = jsArray-of-malValues[index + 1]
+  jsObject
 
-call = (malFn, malValues...) ->
+_call = (malFn, malValues...) ->
   malFn.bind \jsFn ->
     jsFn ((extractJsValues malValues)...)
 
-callWithFullAccess = (malFn, malValues...) ->
+_callWithFullAccess = (malFn, malValues...) ->
+  console.log('_callWithFullAccess')
+  console.log('maValues: ', malValues)
   malFn.bind \jsFn -> jsFn malValues...
 
 convertMalBoolean = \jsValue ->
@@ -59,7 +57,7 @@ exposeProperties = \malValue ->
     malValue # The javascript value itself is accessibly by way of `bind`.
   ]
 
-extractJsValues = (malValues...) ->
+extractJsValues = \malValues ->
   malValues.map \malValue -> malValue.value
 
 _getMalId = (jsValue, malType) ->
@@ -68,61 +66,82 @@ _getMalId = (jsValue, malType) ->
 getMalId = \malValue ->
   _getMalId (malValue.value, malValue.type)
 
+getSeqConstructor = \seqType ->
+  SEQ-CONSTRUCTORS[seqType]
+
 identity = \obj ->
   obj
 
 malSeq? = \value ->
   malList? value || malVector? value
 
+reduceMalListWith = \splatAndReduce \malList ->
+  malList.bind \jsArray -> splatAndReduce jsArray...
+
 sigilize = \malType ->
   MAL-TYPE-SIGILS[malType]
 
+unassociateKeysAndValues = \jsObject ->
+  jsArray = []
+  for own key, value of jsObject
+    jsArray.push ((accessHashCache key), value)
+    delete HASH-CACHE[key]
+  jsArray
+
 MAL-TYPES = [
-  MAL-ATOM-TYPE     = 'atom'
-  MAL-HASH-TYPE     = 'hash'
-  MAL-FALSE-TYPE    = 'false'
-  MAL-FUNCTION-TYPE = 'function'
-  MAL-KEYWORD-TYPE  = 'keyword'
-  MAL-LIST-TYPE     = 'list'
-  MAL-MACRO-TYPE    = 'macro'
-  MAL-NIL-TYPE      = 'nil'
-  MAL-NUMBER-TYPE   = 'number'
-  MAL-STRING-TYPE   = 'string'
-  MAL-SYMBOL-TYPE   = 'symbol'
-  MAL-TRUE-TYPE     = 'true'
-  MAL-VECTOR-TYPE   = 'vector'
+  MAL-ATOM-TYPE          = 'atom'
+  MAL-HASH-TYPE          = 'hash'
+  MAL-FALSE-TYPE         = 'false'
+  MAL-FUNCTION-TYPE      = 'function'
+  MAL-KEYWORD-TYPE       = 'keyword'
+  MAL-LIST-TYPE          = 'list'
+  MAL-MACRO-TYPE         = 'macro'
+  MAL-NIL-TYPE           = 'nil'
+  MAL-NUMBER-TYPE        = 'number'
+  MAL-STRING-TYPE        = 'string'
+  MAL-SUPERFUNCTION-TYPE = 'superFunction'
+  MAL-SYMBOL-TYPE        = 'symbol'
+  MAL-TRUE-TYPE          = 'true'
+  MAL-VECTOR-TYPE        = 'vector'
 ]
 
 MAL-TYPE-SIGILS =
-  'atom'     : '@'
-  'hash'     : '{'
-  'false'    : '-'
-  'function' : 'λ'
-  'keyword'  : ':'
-  'list'     : '('
-  'macro'    : 'μ'
-  'nil'      : '_'
-  'number'   : '#'
-  'string'   : '"'
-  'symbol'   : '*'
-  'true'     : '+'
-  'vector'   : '['
+  'atom'          : '@'
+  'hash'          : '{'
+  'false'         : '-'
+  'function'      : 'λ'
+  'keyword'       : ':'
+  'list'          : '('
+  'macro'         : 'μ'
+  'nil'           : '_'
+  'number'        : '#'
+  'string'        : '"'
+  'superFunction' : 'σ'
+  'symbol'        : '*'
+  'true'          : '+'
+  'vector'        : '['
 
 [
-  [createMalAtom,     malAtom?    ]
-  [_createMalHash,    malHash?    ]
-  [createMalFalse,    malFalse?   ]
-  [createMalFunction, malFunction?]
-  [createMalKeyword,  malKeyword? ]
-  [createMalList,     malList?    ]
-  [createMalMacro,    malMacro?   ]
-  [createMalNil,      malNil?     ]
-  [createMalNumber,   malNumber?  ]
-  [createMalString,   malString?  ]
-  [createMalSymbol,   malSymbol?  ]
-  [createMalTrue,     malTrue?    ]
-  [createMalVector,   malVector?  ]
+  [createMalAtom,          malAtom?         ]
+  [_createMalHash,         malHash?         ]
+  [createMalFalse,         malFalse?        ]
+  [createMalFunction,      malFunction?     ]
+  [createMalKeyword,       malKeyword?      ]
+  [createMalList,          malList?         ]
+  [createMalMacro,         malMacro?        ]
+  [createMalNil,           malNil?          ]
+  [createMalNumber,        malNumber?       ]
+  [createMalString,        malString?       ]
+  [createMalSuperFunction, malSuperFunction?]
+  [createMalSymbol,        malSymbol?       ]
+  [createMalTrue,          malTrue?         ]
+  [createMalVector,        malVector?       ]
 ] = MAL-TYPES.map createTypeUtilities
+
+SEQ-CONSTRUCTORS =
+  'hash'   : createMalHash
+  'list'   : createMalList
+  'vector' : createMalVector
 
 FALSE = createMalFalse false
 NIL   = createMalNil null
@@ -130,6 +149,9 @@ TRUE  = createMalTrue true
 
 # Probable source of memory leaks:
 HASH-CACHE = {}
+
+[call, callWithFullAccess] =
+  [_call, _callWithFullAccess].map reduceMalListWith
 
 module.exports = {
   accessHashCache
@@ -144,11 +166,13 @@ module.exports = {
   createMalMacro
   createMalNumber
   createMalString
+  createMalSuperFunction
   createMalSymbol
   createMalVector
   exposeProperties
   FALSE
   getMalId
+  getSeqConstructor
   malAtom?
   malHash?
   malFalse?
@@ -160,9 +184,11 @@ module.exports = {
   malNumber?
   malSeq?
   malString?
+  malSuperFunction?
   malSymbol?
   malTrue?
   malVector?
   NIL
   TRUE
+  unassociateKeysAndValues
 }

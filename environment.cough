@@ -1,0 +1,43 @@
+'use strict'
+
+{
+  createMalFunction
+  createMalList
+  createMalNumber
+  createMalString
+  createMalSuperFunction
+  createMalVector
+} = require './mal-types'
+
+extend = (jsObjects...) ->
+  result = {}
+  for jsObject in jsObjects
+    for own key, value of jsObject
+      result[key] = value
+  result
+
+mapJsObject = (transform, jsObject) ->
+  result = {}
+  for own key, value of jsObject
+    result[key] = transform value
+  result
+
+jsFunctions =
+  '+'      : (nbrs...)   -> createMalNumber (nbrs.reduce((sum, nbr) -> sum += nbr))
+  '-'      : (nbrs...)   -> createMalNumber (nbrs.reduce((sum, nbr) -> sum -= nbr))
+  '*'      : (nbrs...)   -> createMalNumber (nbrs.reduce((sum, nbr) -> sum *= nbr))
+  '/'      : (nbrs...)   -> createMalNumber (nbrs.reduce((sum, nbr) -> sum /= nbr))
+  'concat' : (arrays...) -> createMalVector ([].concat arrays...)
+
+jsSuperFunctions =
+  'get-type' : \malValue ->
+    console.log('get-type')
+    console.log('malValue: ', malValue)
+    createMalString(malValue.type)
+
+malFunctions      = mapJsObject (createMalFunction, jsFunctions)
+malSuperFunctions = mapJsObject (createMalSuperFunction, jsSuperFunctions)
+
+environment  = extend (malFunctions, malSuperFunctions)
+
+module.exports = environment

@@ -1,11 +1,26 @@
 'use strict'
 
-commentError? = \error ->
-  error.message == commentErrorMessage
+# WET?
+createErrorPredicate = \errorMessage \error ->
+  error.message == errorMessage
 
-throwCommentError = ->
-  throw new Error commentErrorMessage
+createErrorThrower = (errorMessage) -> () ->
+  throw new Error errorMessage
 
-commentErrorMessage = 'The line to be parsed only contains a comment.'
+errorMessages = [
+  commentErrorMessage = 'The line to be parsed only contains a comment.'
+  envErrorMessage = 'Environment does not contain symbol.'
+]
 
-module.exports = { commentError?, throwCommentError }
+[commentError?, environmentError?] =
+  errorMessages.map createErrorPredicate
+
+[throwCommentError, throwEnvironmentError] =
+  errorMessages.map createErrorThrower
+
+module.exports = {
+  commentError?
+  environmentError?
+  throwCommentError
+  throwEnvironmentError
+}

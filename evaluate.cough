@@ -1,0 +1,73 @@
+'use strict'
+
+{ throwEnvironmentError } = require './error-management'
+
+{
+  call
+  createMalHash
+  createMalList
+  createMalVector
+  getSeqConstructor
+  malAtom?
+  malHash?
+  malFalse?
+  malFunction?
+  malKeyword?
+  malList?
+  malMacro?
+  malNil?
+  malNumber?
+  malSeq?
+  malString?
+  malSuperFunction?
+  malSymbol?
+  malTrue?
+  malVector?
+  unassociateKeysAndValues
+} = require './mal-types'
+
+map = \transform \jsArray ->
+ jsArray.map transform
+
+evalHashmap = (symbols, hashmap) ->
+  hashmap.bind \jsObject ->
+    createMalHash (map (evaluate symbols) (unassociateKeysAndValues jsObject)) 
+
+# TODO: Separate the two concerns:
+# concern 1: evaluating each element in the list
+# concern 2: reducing the list
+evalList = (symbols, list) ->
+  console.log('evalList')
+  console.log('list: ', list)
+  console.log('first element of list: ', list.value[0])
+  _call = if malSuperFunction? list.value[0] then callWithFullAccess else call
+  _call (list.bind \jsArray -> createMalList (jsArray.map (evaluate symbols)))
+
+evalVector = (symbols, vector) ->
+  vector.bind \jsArray -> createMalVector (jsArray.map (evaluate symbols))
+
+evalSymbol = (symbols, symbol) ->
+  # Should return a malValue.
+  symbols[symbol.value] ?? throwEnvironmentError ()
+
+evalSeqElements = (symbols, malSeq) ->
+  createSeq = getSeqConstructor malSeq
+  malSeq.bind \seq ->
+    createSeq (
+
+_evaluate = (symbols, value) ->
+  switch
+    when malSymbol? value then evalSymbol (symbols, value)
+    when malList? value   then evalList (symbols, value)
+    when malVector? value then evalVector (symbols, value)
+    when malHash? value   then evalHashmap (symbols, value)
+    else                       value
+
+evaluate = \symbols \value ->
+  _evaluate (symbols, value)
+
+# WET.
+identity = \value ->
+  value
+
+module.exports = evaluate
