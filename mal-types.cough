@@ -87,50 +87,50 @@ unassociateKeysAndValues = \jsObject ->
   jsArray
 
 MAL-TYPES = [
-  MAL-ATOM-TYPE          = 'atom'
-  MAL-HASH-TYPE          = 'hash'
-  MAL-FALSE-TYPE         = 'false'
-  MAL-KEYWORD-TYPE       = 'keyword'
-  MAL-LIST-TYPE          = 'list'
-  MAL-MACRO-TYPE         = 'macro'
-  MAL-NIL-TYPE           = 'nil'
-  MAL-NUMBER-TYPE        = 'number'
-  MAL-STRING-TYPE        = 'string'
+  MAL-ATOM-TYPE     = 'atom'
+  MAL-FALSE-TYPE    = 'false'
   MAL-FUNCTION-TYPE = 'function'
-  MAL-SYMBOL-TYPE        = 'symbol'
-  MAL-TRUE-TYPE          = 'true'
-  MAL-VECTOR-TYPE        = 'vector'
+  MAL-HASH-TYPE     = 'hash'
+  MAL-KEYWORD-TYPE  = 'keyword'
+  MAL-LIST-TYPE     = 'list'
+  MAL-MACRO-TYPE    = 'macro'
+  MAL-NIL-TYPE      = 'nil'
+  MAL-NUMBER-TYPE   = 'number'
+  MAL-STRING-TYPE   = 'string'
+  MAL-SYMBOL-TYPE   = 'symbol'
+  MAL-TRUE-TYPE     = 'true'
+  MAL-VECTOR-TYPE   = 'vector'
 ]
 
 MAL-TYPE-SIGILS =
-  'atom'          : '@'
-  'hash'          : '{'
-  'false'         : '-'
-  'keyword'       : ':'
-  'list'          : '('
-  'macro'         : 'μ'
-  'nil'           : '_'
-  'number'        : '#'
-  'string'        : '"'
-  'function' : 'σ'
-  'symbol'        : '*'
-  'true'          : '+'
-  'vector'        : '['
+  'atom'     : '@'
+  'false'    : '-'
+  'function' : 'λ'
+  'hash'     : '{'
+  'keyword'  : ':'
+  'list'     : '('
+  'macro'    : 'μ'
+  'nil'      : '_'
+  'number'   : '#'
+  'string'   : '"'
+  'symbol'   : '*'
+  'true'     : '+'
+  'vector'   : '['
 
 [
-  [createMalAtom,          malAtom?         ]
-  [_createMalHash,         malHash?         ]
-  [createMalFalse,         malFalse?        ]
-  [createMalKeyword,       malKeyword?      ]
-  [createMalList,          malList?         ]
-  [createMalMacro,         malMacro?        ]
-  [createMalNil,           malNil?          ]
-  [createMalNumber,        malNumber?       ]
-  [createMalString,        malString?       ]
+  [createMalAtom,     malAtom?    ]
+  [createMalFalse,    malFalse?   ]
   [createMalFunction, malFunction?]
-  [createMalSymbol,        malSymbol?       ]
-  [createMalTrue,          malTrue?         ]
-  [createMalVector,        malVector?       ]
+  [_createMalHash,    malHash?    ]
+  [createMalKeyword,  malKeyword? ]
+  [createMalList,     malList?    ]
+  [createMalMacro,    malMacro?   ]
+  [createMalNil,      malNil?     ]
+  [createMalNumber,   malNumber?  ]
+  [createMalString,   malString?  ]
+  [createMalSymbol,   malSymbol?  ]
+  [createMalTrue,     malTrue?    ]
+  [createMalVector,   malVector?  ]
 ] = MAL-TYPES.map createTypeUtilities
 
 SEQ-CONSTRUCTORS =
@@ -154,13 +154,13 @@ module.exports = {
   callWithFullAccess
   convertMalBoolean
   createMalAtom
+  createMalFunction
   createMalHash
   createMalKeyword
   createMalList
   createMalMacro
   createMalNumber
   createMalString
-  createMalFunction
   createMalSymbol
   createMalVector
   exposeProperties
@@ -168,8 +168,9 @@ module.exports = {
   getMalId
   getSeqConstructor
   malAtom?
-  malHash?
   malFalse?
+  malFunction?
+  malHash?
   malKeyword?
   malList?
   malMacro?
@@ -177,7 +178,6 @@ module.exports = {
   malNumber?
   malSeq?
   malString?
-  malFunction?
   malSymbol?
   malTrue?
   malVector?
