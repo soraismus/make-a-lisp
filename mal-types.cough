@@ -90,14 +90,13 @@ MAL-TYPES = [
   MAL-ATOM-TYPE          = 'atom'
   MAL-HASH-TYPE          = 'hash'
   MAL-FALSE-TYPE         = 'false'
-  MAL-FUNCTION-TYPE      = 'function'
   MAL-KEYWORD-TYPE       = 'keyword'
   MAL-LIST-TYPE          = 'list'
   MAL-MACRO-TYPE         = 'macro'
   MAL-NIL-TYPE           = 'nil'
   MAL-NUMBER-TYPE        = 'number'
   MAL-STRING-TYPE        = 'string'
-  MAL-SUPERFUNCTION-TYPE = 'superFunction'
+  MAL-FUNCTION-TYPE = 'function'
   MAL-SYMBOL-TYPE        = 'symbol'
   MAL-TRUE-TYPE          = 'true'
   MAL-VECTOR-TYPE        = 'vector'
@@ -107,14 +106,13 @@ MAL-TYPE-SIGILS =
   'atom'          : '@'
   'hash'          : '{'
   'false'         : '-'
-  'function'      : 'λ'
   'keyword'       : ':'
   'list'          : '('
   'macro'         : 'μ'
   'nil'           : '_'
   'number'        : '#'
   'string'        : '"'
-  'superFunction' : 'σ'
+  'function' : 'σ'
   'symbol'        : '*'
   'true'          : '+'
   'vector'        : '['
@@ -123,14 +121,13 @@ MAL-TYPE-SIGILS =
   [createMalAtom,          malAtom?         ]
   [_createMalHash,         malHash?         ]
   [createMalFalse,         malFalse?        ]
-  [createMalFunction,      malFunction?     ]
   [createMalKeyword,       malKeyword?      ]
   [createMalList,          malList?         ]
   [createMalMacro,         malMacro?        ]
   [createMalNil,           malNil?          ]
   [createMalNumber,        malNumber?       ]
   [createMalString,        malString?       ]
-  [createMalSuperFunction, malSuperFunction?]
+  [createMalFunction, malFunction?]
   [createMalSymbol,        malSymbol?       ]
   [createMalTrue,          malTrue?         ]
   [createMalVector,        malVector?       ]
@@ -158,13 +155,12 @@ module.exports = {
   convertMalBoolean
   createMalAtom
   createMalHash
-  createMalFunction
   createMalKeyword
   createMalList
   createMalMacro
   createMalNumber
   createMalString
-  createMalSuperFunction
+  createMalFunction
   createMalSymbol
   createMalVector
   exposeProperties
@@ -174,7 +170,6 @@ module.exports = {
   malAtom?
   malHash?
   malFalse?
-  malFunction?
   malKeyword?
   malList?
   malMacro?
@@ -182,7 +177,7 @@ module.exports = {
   malNumber?
   malSeq?
   malString?
-  malSuperFunction?
+  malFunction?
   malSymbol?
   malTrue?
   malVector?

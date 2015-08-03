@@ -12,7 +12,6 @@
   malAtom?
   malHash?
   malFalse?
-  malFunction?
   malKeyword?
   malList?
   malMacro?
@@ -20,7 +19,7 @@
   malNumber?
   malSeq?
   malString?
-  malSuperFunction?
+  malFunction?
   malSymbol?
   malTrue?
   malVector?
@@ -35,7 +34,8 @@ evalHashmap = (symbols, hashmap) ->
     createMalHash (map (evaluate symbols) (unassociateKeysAndValues jsObject)) 
 
 _evalList = (symbols, list) ->
-  list.bind \jsArray -> createMalList (jsArray.map (evaluate symbols))
+  list.bind \jsArray ->
+    createMalList (jsArray.map (evaluate symbols))
 
 evalList = (symbols, list) ->
   reduce (_evalList (symbols, list))
@@ -60,9 +60,6 @@ evaluate = \symbols \value ->
   _evaluate (symbols, value)
 
 reduce = \list ->
-  if malSuperFunction? (list.value[0])
-    callWithFullAccess list
-  else
-    call list
+  callWithFullAccess list
 
 module.exports = evaluate

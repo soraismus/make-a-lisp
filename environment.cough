@@ -1,11 +1,10 @@
 'use strict'
 
 {
-  createMalFunction
   createMalList
   createMalNumber
   createMalString
-  createMalSuperFunction
+  createMalFunction
   createMalVector
 } = require './mal-types'
 
@@ -16,25 +15,33 @@ extend = (jsObjects...) ->
       result[key] = value
   result
 
+extractJsValues = \malValues ->
+  malValues.map \malValue -> malValue.value
+
+convertToMalFunction = \jsFn ->
+  createMalFunction ((values...) ->
+    jsFn ((extractJsValues values)...))
+
 mapJsObject = (transform, jsObject) ->
   result = {}
   for own key, value of jsObject
     result[key] = transform value
   result
 
-jsFunctions =
+jsFunctionsOnJsValues =
   '+'      : (nbrs...)   -> createMalNumber (nbrs.reduce((sum, nbr) -> sum += nbr))
   '-'      : (nbrs...)   -> createMalNumber (nbrs.reduce((sum, nbr) -> sum -= nbr))
   '*'      : (nbrs...)   -> createMalNumber (nbrs.reduce((sum, nbr) -> sum *= nbr))
   '/'      : (nbrs...)   -> createMalNumber (nbrs.reduce((sum, nbr) -> sum /= nbr))
   'concat' : (arrays...) -> createMalVector ([].concat arrays...)
 
-jsSuperFunctions =
+jsFunctionsOnMalValues =
   'get-type' : \malValue -> createMalString (malValue.type)
 
-malFunctions      = mapJsObject (createMalFunction, jsFunctions)
-malSuperFunctions = mapJsObject (createMalSuperFunction, jsSuperFunctions)
+malFunctions = extend (
+  mapJsObject (convertToMalFunction, jsFunctionsOnJsValues)
+  mapJsObject (createMalFunction, jsFunctionsOnMalValues))
 
-environment  = extend (malFunctions, malSuperFunctions)
+environment = malFunctions
 
 module.exports = environment
