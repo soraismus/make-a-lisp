@@ -116,13 +116,10 @@ parse = \tokens ->
   _parse ((shift tokens), tokens)
 
 parseMeta = (metaToken, tokens) ->
-  constructor = getMetaSeqTypeConstructor metaToken
-  array = [
+  getMetaSeqTypeConstructor metaToken [
     getCorrespondingMetaSymbol metaToken  
     parse tokens
   ]
-  value = constructor array
-  value
 
 parseSeq = \startToken ->
   seqParsers[startToken]
